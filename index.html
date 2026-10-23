@@ -3071,11 +3071,16 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
   /* ==================================================================
    * 문서 렌더링 + DOM 바인딩
    * ================================================================ */
+  /* 다시 그리는 동안 사라지는 편집 칸의 blur 가 옛 내용을 모델에 되돌려 쓰지 않도록 막는다
+     (실행 취소 직후 내보내기에 취소 전 내용이 남던 문제) */
+  var rendering = false;
   function rerender() {
     var scroll = $('#doc-scroll').scrollTop;
     var r = NWR.render(model, { editable: true, docId: docId });
     elDoc.setAttribute('style', NWR.docStyle(model));
-    elDoc.innerHTML = '<style>' + NWR.enhanceCss('#nw-doc') + '</style>' + r.html;
+    rendering = true;
+    try { elDoc.innerHTML = '<style>' + NWR.enhanceCss('#nw-doc') + '</style>' + r.html; }
+    finally { rendering = false; }
     bindDoc();
     renumberFootnotes();
     $('#doc-scroll').scrollTop = scroll;
@@ -3124,6 +3129,7 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
   }
 
   function pull(el) {
+    if (rendering) return;
     var ch = el.getAttribute('data-ch');
     if (el.classList.contains('nw-doc-title')) { model.title = cleanEditableHTML(el); renumberFootnotes(); scheduleSave(); return; }
     if (el.classList.contains('nw-ch-title') && ch) {

@@ -291,7 +291,7 @@ p.muted{margin:8px 0 12px}
 .opt-row{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:14px;font-size:13px}
 .opt-row label{display:inline-flex;align-items:center;gap:7px;cursor:pointer}
 .opt-row input{accent-color:var(--accent)}
-#outcode{
+#outcode,#transfer-code{
   width:100%;height:min(44vh,340px);border:1px solid var(--line-2);border-radius:var(--r-md);padding:13px;
   font-family:var(--mono);font-size:12px;line-height:1.6;resize:vertical;background:var(--surface-2);
   white-space:pre;overflow:auto;
@@ -775,6 +775,22 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
         <button type="button" class="btn" id="btn-sample-plain">예시: 일반 문서</button>
       </div>
       <ul class="doclist" id="doclist"></ul>
+      <h3 style="margin:22px 0 10px;font-size:14px;font-weight:800;letter-spacing:-.02em">다른 기기로 옮기기</h3>
+      <div class="opt-row">
+        <button type="button" class="btn" id="tr-copy">지금 문서 코드 복사</button>
+        <button type="button" class="btn" id="tr-download">지금 문서 파일로 저장</button>
+        <button type="button" class="btn" id="tr-file">파일에서 불러오기</button>
+        <input type="file" id="tr-file-input" accept=".json,.txt,application/json,text/plain" hidden>
+      </div>
+      <textarea id="transfer-code" spellcheck="false" style="height:min(22vh,160px);white-space:pre-wrap;word-break:break-all" placeholder="다른 기기에서 복사한 문서 코드를 여기에 붙여넣으세요" aria-label="문서 코드 붙여넣기"></textarea>
+      <div class="opt-row" style="margin:10px 0 0">
+        <button type="button" class="btn primary" id="tr-load">코드로 불러오기</button>
+      </div>
+      <p class="hint">
+        작성 중인 문서를 <b>코드 복사</b> 또는 <b>파일로 저장</b>한 뒤, 다른 기기에서 이 창을 열어
+        코드를 붙여넣거나 파일을 선택하면 그대로 이어서 작업할 수 있습니다.
+        불러온 문서는 <b>저장</b>을 눌러야 저장한 문서 목록에 남습니다.
+      </p>
     </div>
   </div>
 </div>
@@ -4228,6 +4244,45 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
     }).join('') : '<li class="empty">저장한 문서가 없습니다.</li>';
   }
 
+  /* 다른 기기로 옮기기: 문서를 코드(문자열)나 .json 파일로 주고받는다. */
+  var TRANSFER_PREFIX = 'MNMWIKI1:';
+  function transferData() {
+    var name = ($('#docname').value || '').trim() || docName || NWR.plainText(model.title) || '';
+    return { app: 'mnmwiki', v: 1, name: name, model: model, updated: Date.now() };
+  }
+  function encodeTransfer() {
+    var json = JSON.stringify(transferData());
+    var bin = '';
+    new TextEncoder().encode(json).forEach(function (b) { bin += String.fromCharCode(b); });
+    return TRANSFER_PREFIX + btoa(bin);
+  }
+  function decodeTransfer(text) {
+    var t = String(text || '').trim(), data;
+    if (!t) throw new Error('empty');
+    if (t.charAt(0) === '{') data = JSON.parse(t);
+    else {
+      if (t.indexOf(TRANSFER_PREFIX) === 0) t = t.slice(TRANSFER_PREFIX.length);
+      var bin = atob(t.replace(/\s+/g, ''));
+      var bytes = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      data = JSON.parse(new TextDecoder().decode(bytes));
+    }
+    if (data && data.model && !data.app) data = { name: data.name, model: data.model };
+    if (!data || !data.model || data.model.v !== 2) throw new Error('invalid');
+    return data;
+  }
+  function importTransfer(text) {
+    var data;
+    try { data = decodeTransfer(text); }
+    catch (e) { toast('불러오기 실패 — 올바른 문서 코드가 아닙니다'); return false; }
+    if (!confirm('현재 편집 중인 문서를 "' + (data.name || '이름 없는 문서') + '" 문서로 바꿀까요?\n저장하지 않은 변경은 사라집니다.')) return false;
+    loadModel(data.model, null, data.name || '');
+    scheduleSave(true);
+    closeModal();
+    toast('"' + (data.name || '문서') + '" 불러옴 — 저장을 눌러 목록에 남기세요');
+    return true;
+  }
+
   function buildExport() {
     var mode = ($$('input[name=exmode]').filter(function (r) { return r.checked; })[0] || {}).value || 'fragment';
     var opts = { docId: (docKey || 'doc'), styleTag: $('#ex-style').checked, script: $('#ex-script').checked };
@@ -4334,6 +4389,41 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
       a.download = name + '.html';
       document.body.appendChild(a); a.click();
       setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    });
+
+    $('#tr-copy').addEventListener('click', function () {
+      var code = encodeTransfer();
+      function fallback() {
+        var ta = $('#transfer-code');
+        ta.value = code; ta.select();
+        try { document.execCommand('copy'); toast('문서 코드를 복사했습니다'); }
+        catch (e) { toast('복사 실패 — 아래 칸의 코드를 직접 복사하세요'); }
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(function () { toast('문서 코드를 복사했습니다'); }, fallback);
+      else fallback();
+    });
+    $('#tr-download').addEventListener('click', function () {
+      var data = transferData();
+      var name = (data.name || 'document').replace(/[\\/:*?"<>|]/g, '_');
+      var blob = new Blob([JSON.stringify(data)], { type: 'application/json;charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name + '.mnmwiki.json';
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+      toast('문서 파일을 저장했습니다');
+    });
+    $('#tr-file').addEventListener('click', function () { $('#tr-file-input').click(); });
+    $('#tr-file-input').addEventListener('change', function () {
+      var input = this, f = input.files && input.files[0];
+      if (!f) return;
+      var rd = new FileReader();
+      rd.onload = function () { importTransfer(rd.result); input.value = ''; };
+      rd.onerror = function () { toast('파일을 읽지 못했습니다'); input.value = ''; };
+      rd.readAsText(f);
+    });
+    $('#tr-load').addEventListener('click', function () {
+      if (importTransfer($('#transfer-code').value)) $('#transfer-code').value = '';
     });
 
     $('#docname').addEventListener('input', function () { docName = this.value; scheduleSave(); });

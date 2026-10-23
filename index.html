@@ -694,11 +694,12 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
   <button type="button" class="tb" data-tbl="col+">열 추가</button>
   <button type="button" class="tb" data-tbl="col-">열 삭제</button>
   <button type="button" class="tb" data-tbl="head">제목 행 전환</button>
+  <button type="button" class="tb" data-tbl="size">표 넓이 · 열 비율</button>
   <button type="button" class="tb" data-tbl="bg">칸 배경색</button>
   <button type="button" class="tb" data-tbl="merge">셀 병합</button>
   <button type="button" class="tb" data-tbl="split">병합 해제</button>
   <button type="button" class="tb danger" data-tbl="del">표 삭제</button>
-  <span class="table-hint">Shift+클릭으로 셀 선택</span>
+  <span class="table-hint">Shift+클릭으로 셀 선택 · 칸 경계를 끌어 열 넓이 조절</span>
 </div>
 
 <!-- ============ 본체 ============ -->
@@ -817,6 +818,7 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
         <li>본문의 표 안을 클릭하면 <b>표 편집</b> 도구모음이 나타납니다. 행·열 추가와 삭제, 제목 행 전환, 칸 배경색 변경을 사용할 수 있습니다.</li>
         <li>첫 번째 셀을 클릭하고 <b>Shift+클릭</b>으로 마지막 셀을 선택한 뒤 <b>셀 병합</b>을 누릅니다. 선택한 사각형 영역의 행이나 열을 합칠 수 있습니다.</li>
         <li>합친 셀을 클릭하고 <b>병합 해제</b>를 누르면 다시 나눌 수 있습니다.</li>
+        <li><b>표 넓이 · 열 비율</b>에서 표 전체 넓이(%)와 위치, 열 비율(예: <code>1 : 2 : 1</code>)을 정할 수 있습니다. 본문에서 칸 사이 세로 경계를 마우스로 끌어도 열 넓이가 바뀝니다.</li>
       </ul>
       <h3>미리보기 창</h3>
       <ul>
@@ -1159,6 +1161,7 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
     allow:1, allowfullscreen:1, frameborder:1, loading:1, open:1, scope:1,
     'data-note':1, 'data-nw':1, 'data-name':1, 'data-src':1, 'data-w':1, 'data-align':1, 'data-cap':1,
     'data-accent':1, 'data-bg':1, 'data-fg':1, 'data-border':1, 'data-icon':1, 'data-cite':1, 'data-fit':1,
+    'data-cols':1, 'data-tw':1, 'data-talign':1,
     viewBox:1, viewbox:1, d:1, fill:1, role:1, 'aria-label':1, tabindex:1, xmlns:1
   };
   var ALLOW_CSS = /^(color|background|background-color|font-size|font-weight|font-style|font-family|text-decoration|text-decoration-line|text-align|vertical-align|line-height|letter-spacing|margin|margin-(top|bottom|left|right)|padding|padding-(top|bottom|left|right)|border|border-(top|bottom|left|right|color|width|style|radius)|width|max-width|min-width|height|max-height|display|flex|flex-wrap|flex-basis|gap|align-items|justify-content|overflow|overflow-x|white-space|border-collapse|table-layout|position|top|left|right|bottom|z-index|opacity|list-style|list-style-position|clear|float|word-break|overflow-wrap|text-underline-offset|caption-side|padding-inline|aspect-ratio|object-fit)$/;
@@ -1338,9 +1341,69 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
         w.appendChild(tb);
       }
       defaults(tb.parentNode, 'margin:1em 0 1.3em;border:1px solid ' + BASE.line2 + ';border-radius:6px;overflow:hidden;overflow-x:auto;');
+      applyTableSize(tb);
     });
 
     return box.innerHTML;
+  }
+
+  /* 표 넓이 · 열 비율
+   *  table[data-tw]     표 전체 넓이(본문 대비 %), 비우면 100
+   *  table[data-talign] 표가 좁을 때 위치(left|center|right)
+   *  table[data-cols]   열 비율(쉼표 구분 숫자). 칸마다 width:% 로 풀어 넣어 <style> 없이도 유지된다. */
+  function tableColumns(tb) {
+    var rows = Array.prototype.slice.call(tb.rows).filter(function (r) { return r.closest('table') === tb; });
+    var slots = rows.map(function () { return []; }), out = [], width = 0;
+    rows.forEach(function (row, r) {
+      var c = 0;
+      Array.prototype.slice.call(row.cells).forEach(function (cell) {
+        while (slots[r][c]) c++;
+        var cs = Math.max(1, parseInt(cell.getAttribute('colspan'), 10) || 1);
+        var rs = Math.max(1, parseInt(cell.getAttribute('rowspan'), 10) || 1);
+        for (var rr = r; rr < Math.min(rows.length, r + rs); rr++) for (var cc = c; cc < c + cs; cc++) slots[rr][cc] = 1;
+        out.push({ cell: cell, col: c, cols: cs });
+        c += cs;
+        width = Math.max(width, c);
+      });
+    });
+    return { cells: out, width: width };
+  }
+  function tableRatios(tb, count) {
+    var list = String(tb.getAttribute('data-cols') || '').split(',').map(function (x) { return parseFloat(x); });
+    if (list.length !== count || list.some(function (x) { return !(x > 0); })) return null;
+    return list;
+  }
+  function applyTableSize(tb) {
+    var wrap = tb.parentNode && tb.parentNode.getAttribute && tb.parentNode.getAttribute('data-nw') === 'tablewrap' ? tb.parentNode : null;
+    var tw = parseFloat(tb.getAttribute('data-tw'));
+    if (wrap) {
+      if (tw > 0 && tw < 100) {
+        var al = tb.getAttribute('data-talign');
+        wrap.style.width = tw + '%';
+        wrap.style.maxWidth = '100%';
+        wrap.style.marginLeft = al === 'center' || al === 'right' ? 'auto' : '0';
+        wrap.style.marginRight = al === 'center' ? 'auto' : '0';
+      } else {
+        wrap.style.removeProperty('width'); wrap.style.removeProperty('max-width');
+        wrap.style.marginLeft = '0'; wrap.style.marginRight = '0';
+      }
+    }
+    var info = tableColumns(tb), ratios = tableRatios(tb, info.width);
+    if (!ratios) return;
+    var total = ratios.reduce(function (a, b) { return a + b; }, 0);
+    tb.style.tableLayout = 'fixed';
+    tb.style.width = '100%';
+    info.cells.forEach(function (e) {
+      var sum = 0;
+      for (var i = e.col; i < e.col + e.cols && i < ratios.length; i++) sum += ratios[i];
+      e.cell.style.width = (Math.round(sum / total * 10000) / 100) + '%';
+    });
+  }
+  function clearTableSize(tb) {
+    tb.style.removeProperty('table-layout');
+    Array.prototype.slice.call(tb.querySelectorAll('td,th')).forEach(function (c) {
+      if (c.closest('table') === tb) c.style.removeProperty('width');
+    });
   }
 
   function renderQuoteEl(el, ctx) {
@@ -1977,6 +2040,9 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
     exportPage: exportPage,
     enhanceCss: enhanceCss,
     sanitize: sanitize,
+    tableColumns: tableColumns,
+    applyTableSize: applyTableSize,
+    clearTableSize: clearTableSize,
     sanitizeInline: inlineHtml,
     plainText: plainText,
     docStyle: function (model) { return styles(resolveTheme(model || {})).doc; },
@@ -2771,6 +2837,19 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
     afterChange(nearestCell(grid(layout.table), position, current.col));
   }
 
+  /* 열 비율(data-cols)이 있으면 열 추가/삭제에 맞춰 함께 고친다. */
+  function shiftRatios(layout, position, delta) {
+    var table = layout.table;
+    var list = String(table.getAttribute('data-cols') || '').split(',').map(parseFloat);
+    if (!table.getAttribute('data-cols') || list.length !== layout.width) return;
+    if (delta > 0) {
+      var avg = list.reduce(function (a, b) { return a + b; }, 0) / list.length;
+      list.splice(position, 0, Math.round(avg * 100) / 100);
+    } else list.splice(position, 1);
+    table.setAttribute('data-cols', list.join(','));
+    if (global.NWR) NWR.applyTableSize(table);
+  }
+
   function addColumn(layout, current) {
     var position = current.col + current.cols;
     var crossing = layout.entries.filter(function (entry) {
@@ -2788,6 +2867,7 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
       }).sort(function (a, b) { return a.col - b.col; })[0];
       row.insertBefore(cell, next ? next.cell : null);
     });
+    shiftRatios(layout, position, 1);
     afterChange(nearestCell(grid(layout.table), current.row, position));
   }
 
@@ -2800,6 +2880,7 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
         else entry.cell.remove();
       }
     });
+    shiftRatios(layout, position, -1);
     afterChange(nearestCell(grid(layout.table), current.row, position));
   }
 
@@ -3595,8 +3676,8 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
       title: cur ? '인용구 편집' : '인용구 넣기',
       okText: cur ? '적용' : '넣기',
       fields: [
-        { key: 'text', label: '인용할 내용', type: 'textarea', rows: 3,
-          value: cur ? textOfQuote(body, cite) : NWE.selectedText(), placeholder: '줄바꿈하면 여러 줄이 됩니다', hint: '넣은 뒤에도 본문에서 바로 고칠 수 있습니다.' },
+        { key: 'text', label: '인용할 내용', type: 'rich',
+          value: cur ? htmlOfQuote(body) : esc(NWE.selectedText()).replace(/\n/g, '<br>'), hint: '굵게 · 색 등 글자 서식을 넣을 수 있습니다. 넣은 뒤에도 본문에서 바로 고칠 수 있습니다.' },
         { key: 'cite', label: '출처', value: cite ? cite.textContent.replace(/^—\s*/, '') : '', placeholder: '비워도 됩니다' },
         { key: 'fit', label: '상자 폭', type: 'select', value: (cur && cur.getAttribute('data-fit')) || 'full',
           options: [['full', '본문 전체 폭'], ['content', '내용에 맞춤']] },
@@ -3606,8 +3687,7 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
         { key: 'border', label: '테두리 색', type: 'color', value: (cur && cur.getAttribute('data-border')) || T.quote.border }
       ],
       onOk: function (v) {
-        var lines = String(v.text || '').split('\n').filter(function (x) { return x.trim(); });
-        var inner = lines.length ? lines.map(esc).join('<br>') : '인용할 내용';
+        var inner = quoteLines(v.text) || '인용할 내용';
         var html = '<div data-nw="quote" data-fit="' + esc(v.fit || 'full') + '" data-accent="' + esc(v.accent) + '" data-bg="' + esc(v.bg) + '" data-fg="' + esc(v.fg) + '" data-border="' + esc(v.border) + '">' +
                      '<span data-nw="qbar"></span>' +
                      '<div data-nw="qbody">' + inner +
@@ -3619,12 +3699,25 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
       }
     });
   }
-  function textOfQuote(body, cite) {
+  function htmlOfQuote(body) {
     if (!body) return '';
     var d = body.cloneNode(true);
     var c = d.querySelector('[data-nw=qcite]');
     if (c) c.remove();
-    return d.innerHTML.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim();
+    return d.innerHTML.trim();
+  }
+  /* 서식 칸에서 Enter 로 생긴 <div>/<p> 줄을 <br> 줄바꿈으로 바꾼다 */
+  function quoteLines(html) {
+    var d = document.createElement('div');
+    d.innerHTML = String(html || '');
+    $$('div:not([data-nw]),p', d).reverse().forEach(function (b) {
+      var frag = document.createDocumentFragment();
+      if (b.previousSibling) frag.appendChild(document.createElement('br'));
+      while (b.firstChild) frag.appendChild(b.firstChild);
+      b.parentNode.replaceChild(frag, b);
+    });
+    var out = d.innerHTML.replace(/(<br\s*\/?>\s*)+$/i, '').trim();
+    return NWR.plainText(out) || /<img/i.test(out) ? out : '';
   }
 
   /* ---- 본문 속 경고/안내 문구 ---- */
@@ -3740,6 +3833,119 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
     });
   }
 
+  /* ---- 표 넓이 · 열 비율 ---- */
+  function tableRatioList(tb) {
+    var n = NWR.tableColumns(tb).width;
+    var list = String(tb.getAttribute('data-cols') || '').split(',').map(parseFloat);
+    if (list.length === n && list.every(function (x) { return x > 0; })) return list;
+    /* 비율이 없으면 지금 보이는 넓이를 비율로 삼는다 */
+    var w = [], cells = NWR.tableColumns(tb).cells;
+    for (var i = 0; i < n; i++) w.push(0);
+    cells.forEach(function (e) { if (e.cols === 1 && !w[e.col]) w[e.col] = e.cell.getBoundingClientRect().width; });
+    var total = w.reduce(function (a, b) { return a + b; }, 0);
+    return w.map(function (x) { return x > 0 && total ? Math.round(x / total * 100) : Math.round(100 / n); });
+  }
+  function fmtRatio(list) {
+    var total = list.reduce(function (a, b) { return a + b; }, 0) || 1;
+    return list.map(function (x) { return Math.round(x / total * 1000) / 10; }).join(' : ');
+  }
+  function openTableSizeDialog(tb) {
+    var n = NWR.tableColumns(tb).width;
+    var tw = parseFloat(tb.getAttribute('data-tw')) || 100;
+    dialog({
+      title: '표 넓이 · 열 비율',
+      okText: '적용',
+      fields: [
+        { key: 'tw', label: '표 전체 넓이 (본문 대비 %)', type: 'range', min: 20, max: 100, step: 1, value: tw },
+        { key: 'align', label: '표 위치 (100%보다 좁을 때)', type: 'select', value: tb.getAttribute('data-talign') || 'left',
+          options: [['left', '왼쪽'], ['center', '가운데'], ['right', '오른쪽']] },
+        { key: 'cols', label: '열 비율 (' + n + '개 열, 왼쪽부터)', value: tb.getAttribute('data-cols') ? fmtRatio(tableRatioList(tb)) : '',
+          placeholder: '예: ' + (n === 3 ? '1 : 2 : 1' : n === 2 ? '30 : 70' : '1 : 1 …'),
+          hint: '숫자를 : 또는 , 로 구분해 열 개수만큼 적습니다. 1:2 와 33:67 은 같은 비율입니다. 비우면 내용에 맞춰 자동으로 정해집니다.' }
+      ],
+      onOk: function (v) {
+        var w = Math.max(20, Math.min(100, parseFloat(v.tw) || 100));
+        if (w >= 100) tb.removeAttribute('data-tw'); else tb.setAttribute('data-tw', String(w));
+        if (v.align && v.align !== 'left') tb.setAttribute('data-talign', v.align); else tb.removeAttribute('data-talign');
+        var raw = String(v.cols || '').trim();
+        if (!raw) {
+          tb.removeAttribute('data-cols');
+          NWR.clearTableSize(tb);
+        } else {
+          var list = raw.split(/[:,\s]+/).filter(Boolean).map(parseFloat);
+          if (list.length !== n || list.some(function (x) { return !(x > 0); })) {
+            toast('열 비율은 0보다 큰 숫자 ' + n + '개를 적어 주세요');
+            NWR.applyTableSize(tb); syncActive();
+            return;
+          }
+          tb.setAttribute('data-cols', list.join(','));
+        }
+        NWR.applyTableSize(tb);
+        syncActive();
+      }
+    });
+  }
+
+  /* 본문 표의 세로 칸 경계를 끌어 이웃한 두 열의 넓이를 바꾼다 */
+  function initColumnResize() {
+    var EDGE = 5, drag = null;
+    function boundaryAt(ev) {
+      var cell = ev.target.closest && ev.target.closest('td,th');
+      if (!cell || !elDoc.contains(cell)) return null;
+      var tb = cell.closest('table');
+      if (!tb || !tb.closest('[contenteditable="true"]') || tb.closest('[data-pf]')) return null;
+      var r = cell.getBoundingClientRect(), right;
+      if (r.right - ev.clientX <= EDGE) right = true;
+      else if (ev.clientX - r.left <= EDGE) right = false;
+      else return null;
+      var e = NWR.tableColumns(tb).cells.filter(function (x) { return x.cell === cell; })[0];
+      if (!e) return null;
+      var line = right ? e.col + e.cols - 1 : e.col - 1;        /* 경계 왼쪽 열 */
+      var n = NWR.tableColumns(tb).width;
+      if (line < 0 || line >= n - 1) return null;
+      return { table: tb, col: line };
+    }
+    elDoc.addEventListener('mousemove', function (ev) {
+      if (drag) return;
+      var b = boundaryAt(ev);
+      var cell = ev.target.closest && ev.target.closest('td,th');
+      if (cell) cell.style.cursor = b ? 'col-resize' : '';
+    });
+    elDoc.addEventListener('mousedown', function (ev) {
+      if (ev.button !== 0) return;
+      var b = boundaryAt(ev);
+      if (!b) return;
+      ev.preventDefault(); ev.stopPropagation();
+      recordHistory();
+      var list = tableRatioList(b.table);
+      var total = list.reduce(function (a, c) { return a + c; }, 0);
+      var px = b.table.getBoundingClientRect().width || 1;
+      drag = { table: b.table, col: b.col, list: list, total: total, px: px, x: ev.clientX,
+               a: list[b.col], b: list[b.col + 1] };
+      document.body.style.cursor = 'col-resize';
+    }, true);
+    document.addEventListener('mousemove', function (ev) {
+      if (!drag) return;
+      var dx = (ev.clientX - drag.x) / drag.px * drag.total;
+      var pair = drag.a + drag.b, min = drag.total * 0.04;
+      var a = Math.max(min, Math.min(pair - min, drag.a + dx));
+      drag.list[drag.col] = Math.round(a * 100) / 100;
+      drag.list[drag.col + 1] = Math.round((pair - a) * 100) / 100;
+      drag.table.setAttribute('data-cols', drag.list.join(','));
+      NWR.applyTableSize(drag.table);
+    });
+    document.addEventListener('mouseup', function () {
+      if (!drag) return;
+      var tb = drag.table;
+      drag = null;
+      document.body.style.cursor = '';
+      $$('td,th', tb).forEach(function (c) { c.style.removeProperty('cursor'); });
+      var host = tb.closest('[contenteditable="true"]');
+      if (host) pull(host);
+      recordHistory();
+    });
+  }
+
   function tableOp(op) {
     var td = NWE.closest('td,th');
     var tb = NWE.closest('table');
@@ -3787,6 +3993,9 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
           syncActive();
         }
       });
+      return;
+    } else if (op === 'size') {
+      openTableSizeDialog(tb);
       return;
     } else if (op === 'del') {
       if (!confirm('이 표를 삭제할까요?')) return;
@@ -4308,6 +4517,7 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
     if (window.NWTables) NWTables.init({ root: elDoc, onChange: function (host) { if (host) pull(host); renumberFootnotes(); recordHistory(); }, onToast: toast });
     initToolbar();
     initSide();
+    initColumnResize();
     $('#btn-undo').addEventListener('click', function () { restoreHistory(-1); });
     $('#btn-redo').addEventListener('click', function () { restoreHistory(1); });
     /* End a typing group before a separate toolbar or structural operation. */

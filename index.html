@@ -853,6 +853,7 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
         <li>본문 문단·인용구·표 등에 마우스를 올리면(터치 화면은 누르면) 왼쪽에 <b>⋮⋮ 손잡이</b>가 나타납니다. 끌어서 원하는 위치에 놓으면 순서가 바뀝니다. 다른 챕터로도 옮길 수 있습니다.</li>
         <li>커서가 있는 블록은 <code>Alt+Shift+↑ / ↓</code> 로 한 칸씩 옮길 수 있습니다.</li>
         <li>색 칸을 누르면 <b>색 팔레트</b>가 열립니다. 이 문서에서 쓰는 색과 최근 쓴 색을 바로 고를 수 있고, <b>＋ 지금 색 저장</b>으로 자주 쓰는 색을 저장해 둘 수 있습니다(저장한 색은 우클릭하면 삭제). 원래 색 선택기는 <b>다른 색 고르기</b>로 엽니다.</li>
+        <li>문서 전체 정렬은 왼쪽 <b>문서</b> 탭의 <b>본문 정렬</b>에서 한 번에 바꿉니다. 따로 정렬한 문단까지 맞추려면 그 아래 버튼을 누르세요.</li>
         <li><b>☰ 양쪽 정렬</b>은 줄 끝을 맞추면서 단어 중간에서도 줄을 바꿔, 띄어쓰기 간격이 넓게 벌어지지 않게 합니다.</li>
       </ul>
       <h3>미리보기 창</h3>
@@ -1117,6 +1118,8 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
 
     return {
       accent: accent,
+      /* 본문 기본 정렬 (left | center | right | justify) — 챕터 본문 전체에 한 번에 적용 */
+      bodyAlign: ({ center: 1, right: 1, justify: 1 })[t.bodyAlign] ? t.bodyAlign : 'left',
       heading: {
         num:    col(hd.num, accent),
         text:   col(hd.text, BASE.fg),
@@ -1482,7 +1485,11 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
       var key = el.getAttribute('data-icon') || '';
       if (/^mi:/.test(key)) ic.innerHTML = iconHtml(key);
     }
-    if (tx) tx.setAttribute('style', 'flex:1 1 auto;min-width:0;line-height:1.6;');
+    if (tx) {
+      var ta = tx.style.textAlign;
+      tx.setAttribute('style', 'flex:1 1 auto;min-width:0;line-height:1.6;' +
+        (ta ? 'text-align:' + ta + ';' : '') + (ta === 'justify' ? 'word-break:break-all;' : ''));
+    }
   }
 
   function renderFigureEl(el, ctx) {
@@ -1630,6 +1637,12 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
     return (d === 1 ? 'margin:.9em 0 2.2em;' : 'margin:.75em 0 1.6em;') + 'line-height:' + LH + ';';
   }
 
+  function bodyAlignCss(T) {
+    var a = T.bodyAlign;
+    if (a === 'left') return '';
+    return 'text-align:' + a + ';' + (a === 'justify' ? 'word-break:break-all;' : '');
+  }
+
   function renderChapters(nodes, prefix, depth, ctx) {
     return nodes.map(function (ch, i) {
       var num = prefix ? prefix + '.' + (i + 1) : String(i + 1);
@@ -1659,7 +1672,7 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
                  '</summary>' +
                  '<div style="' + secBodyStyle(d) + '">' +
                    '<div class="nw-body"' + (ctx.editable ? ' contenteditable="true" data-ch="' + attr(ch.id) + '"' : '') +
-                     ' style="outline:0;min-height:1.9em;padding:0;margin:0;line-height:' + LH + ';">' + body + '</div>' +
+                     ' style="outline:0;min-height:1.9em;padding:0;margin:0;line-height:' + LH + ';' + bodyAlignCss(ctx.T) + '">' + body + '</div>' +
                    kids +
                  '</div>' +
                '</details>' +
@@ -3280,6 +3293,35 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
       walk(n.children, n, fn);
     });
   }
+  /* 챕터 본문에서 문단마다 따로 준 정렬을 세거나(clear=false) 걷어 낸다(clear=true) */
+  var OWN_ALIGN = 'p,li,h1,h2,h3,h4,h5,h6,td,blockquote,div:not([data-nw]),[data-nw=qbody],[data-nw=ntext]';
+  function individualAligns(clear) {
+    var count = 0, box = document.createElement('div');
+    walk(model.chapters, null, function (n) {
+      if (!n.body) return;
+      box.innerHTML = n.body;
+      var hit = $$(OWN_ALIGN, box).filter(function (el) { return el.style.textAlign; });
+      count += hit.length;
+      if (clear && hit.length) {
+        hit.forEach(function (el) {
+          el.style.removeProperty('text-align');
+          if (el.style.wordBreak === 'break-all') el.style.removeProperty('word-break');
+          if (!el.getAttribute('style')) el.removeAttribute('style');
+        });
+        n.body = box.innerHTML;
+      }
+    });
+    return count;
+  }
+  function setBodyAlign(value) {
+    recordHistory();
+    setPath(model, 'theme.bodyAlign', value === 'left' ? '' : value);
+    var cnt = individualAligns(false);
+    if (cnt && confirm('따로 정렬한 문단이 ' + cnt + '개 있습니다. 이 문단들도 함께 바꿀까요?\n(취소하면 그 문단들은 지금 정렬을 유지합니다)')) individualAligns(true);
+    rerender(); recordHistory();
+    toast('본문 정렬을 바꿨습니다');
+  }
+
   function findChapter(id) {
     var found = null;
     walk(model.chapters, null, function (n, arr, i, parent) {
@@ -4286,6 +4328,12 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
           '<option value="profile"' + (model.type === 'profile' ? ' selected' : '') + '>프로필 문서</option>' +
           '<option value="plain"' + (model.type === 'plain' ? ' selected' : '') + '>일반 문서</option>' +
         '</select></div>' +
+        '<div class="field"><label>본문 정렬 <small class="muted">문서 전체에 한 번에 적용</small></label><select data-op="body-align">' +
+          [['left', '왼쪽 (기본)'], ['center', '가운데'], ['right', '오른쪽'], ['justify', '양쪽']].map(function (o) {
+            return '<option value="' + o[0] + '"' + (((model.theme && model.theme.bodyAlign) || 'left') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+          }).join('') + '</select>' +
+          '<small>따로 정렬한 문단은 그 정렬을 유지합니다.</small></div>' +
+        '<button type="button" class="mini" data-op="align-reset">따로 정렬한 문단도 모두 본문 정렬로 맞추기</button>' +
       '</div>' +
       '<div class="pane-sec">' +
         '<div class="pane-h">분류 <small class="muted">문서 맨 위에 표시</small></div>' +
@@ -4341,6 +4389,14 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
         case 'row-del':      delRow(id); return;
 
         case 'cat-add':  addCategory(); return;
+        case 'align-reset': {
+          var cnt = individualAligns(false);
+          if (!cnt) { toast('따로 정렬한 문단이 없습니다'); return; }
+          if (!confirm('따로 정렬한 문단 ' + cnt + '개의 정렬을 풀고 본문 정렬을 따르게 할까요?')) return;
+          recordHistory(); individualAligns(true); rerender(); recordHistory();
+          toast('모든 문단을 본문 정렬로 맞췄습니다');
+          return;
+        }
         case 'cat-del':
           model.categories.splice(parseInt(b.getAttribute('data-i'), 10), 1);
           rerender(); return;
@@ -4412,6 +4468,7 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
         case 'g-open':  { var g3 = findGroup(id); if (g3) { g3.open = el.checked; scheduleSave(); } return; }
 
         case 'doc-title': model.title = esc(el.value); var h1 = $('.nw-doc-title', elDoc); if (h1) h1.textContent = el.value; renumberFootnotes(); scheduleSave(); return;
+        case 'body-align': setBodyAlign(el.value); return;
         case 'doc-type':  model.type = el.value; if (el.value === 'profile' && !(model.profile.groups || []).length) model.profile = NWR.defaults('profile').profile; rerender(); return;
 
         case 'nt-icon': { var n1 = model.notices.filter(function (x) { return x.id === id; })[0]; if (n1) { n1.icon = el.value; debouncedRerender(); } return; }

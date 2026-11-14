@@ -539,6 +539,8 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
   .side{max-height:none}
   .doc-frame{padding:0}
   .document-identity{max-width:190px}
+  /* 위쪽 공통 규칙의 flex:1 1 140px 가 세로 방향(.document-identity)에서 높이 140px 로 잡히던 것을 되돌린다 */
+  .docname{flex:0 0 auto}
   .private-badge{display:none}
   .file-actions{border-right:0;padding-right:0}
   .brand{min-width:170px}
@@ -619,6 +621,25 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;transition:none!important}
 }
+/* 스마트폰 폭: 파일 버튼 · 미리보기 · 내보내기를 한 줄에 담아 헤더를 두 줄로 유지 */
+@media (max-width:520px){
+  .topbar{gap:8px 4px}
+  .file-actions{gap:0;margin-right:0}
+  .file-actions .btn{padding:0 5px}
+  .topbar>#btn-preview{font-size:0;gap:0;padding:0 9px}
+  .topbar>#btn-preview .ui-icon{width:15px;height:15px}
+  .topbar>#btn-export{padding:0 9px}
+}
+@media (max-width:420px){
+  .document-identity{min-width:110px}
+  .file-actions .btn{padding:0 4px}
+  .topbar>#btn-export{padding:0 8px}
+  .topbar>#btn-export .ui-icon{display:none}
+}
+@media (max-width:380px){
+  .file-actions .btn{font-size:11.5px}
+  .file-actions #btn-new span{display:none}
+}
 
 /* 블록 끌어 옮기기 */
 .blk-handle{position:fixed;z-index:30;width:20px;height:24px;display:none;align-items:center;justify-content:center;
@@ -666,7 +687,7 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
     <button type="button" class="btn ghost" id="btn-save">저장</button>
     <button type="button" class="btn ghost" id="btn-help">도움말</button>
   </div>
-  <button type="button" class="btn" id="btn-preview" title="새 창에서 클릭 동작·모바일·반응형을 확인합니다"><svg class="ui-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M1.8 10s3-5.2 8.2-5.2 8.2 5.2 8.2 5.2-3 5.2-8.2 5.2S1.8 10 1.8 10z"/><circle cx="10" cy="10" r="2.3"/></svg>미리보기 창</button>
+  <button type="button" class="btn" id="btn-preview" title="새 창에서 클릭 동작·모바일·반응형을 확인합니다" aria-label="미리보기 창"><svg class="ui-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M1.8 10s3-5.2 8.2-5.2 8.2 5.2 8.2 5.2-3 5.2-8.2 5.2S1.8 10 1.8 10z"/><circle cx="10" cy="10" r="2.3"/></svg>미리보기 창</button>
   <button type="button" class="btn primary" id="btn-export">HTML 내보내기<svg class="ui-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2v10m-4-4 4 4 4-4M3.5 12.5v4h13v-4"/></svg></button>
 </header>
 

@@ -800,6 +800,7 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
       <div class="opt-row">
         <label><input type="checkbox" id="ex-style" checked> &lt;style&gt; 태그 포함 (호버 스포일러 · 화살표 · 모바일 대응)</label>
         <label><input type="checkbox" id="ex-script" checked> 각주 팝업 위치 보정 스크립트 포함 (약 1.4KB)</label>
+        <label><input type="checkbox" id="ex-flush" checked> 좌우 여백 없이 블로그 본문 폭에 꽉 맞추기 (블로그 붙여넣기용)</label>
       </div>
       <textarea id="outcode" readonly spellcheck="false" aria-label="내보낸 HTML"></textarea>
       <p class="hint">
@@ -1906,7 +1907,9 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
     var html = titleHtml + cats + notices + top +
                '<div class="nw-chapters" style="line-height:' + LH + ';">' + chapters + '</div>' + fnList;
 
-    html = '<div class="nw-content" style="box-sizing:border-box;width:100%;padding:38px 4% 56px;line-height:' + LH + ';">' + html + '</div>';
+    /* flush: 블로그에 붙여넣을 때는 스킨이 이미 좌우 여백을 주므로 문서 자체의 좌우 여백(4%)을 뺀다 */
+    var pad = opts.flush ? '38px 0 56px' : '38px 4% 56px';
+    html = '<div class="nw-content" style="box-sizing:border-box;width:100%;padding:' + pad + ';line-height:' + LH + ';">' + html + '</div>';
     return { html: html, docId: docId, toc: ctx.toc, footnotes: ctx.fn.length, theme: T };
   }
 
@@ -2036,7 +2039,7 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
 
   function exportFragment(model, opts) {
     opts = opts || {};
-    var r = render(model, { docId: opts.docId, editable: false });
+    var r = render(model, { docId: opts.docId, editable: false, flush: !!opts.flush });
     var cls = 'nw-doc nw-' + r.docId;
     var style = opts.styleTag === false ? '' : '<style>\n' + enhanceCss('.nw-' + r.docId) + '\n</style>\n';
     var script = opts.script === false ? '' : '\n' + popupScriptTag();
@@ -4660,7 +4663,9 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
 
   function buildExport() {
     var mode = ($$('input[name=exmode]').filter(function (r) { return r.checked; })[0] || {}).value || 'fragment';
-    var opts = { docId: (docKey || 'doc'), styleTag: $('#ex-style').checked, script: $('#ex-script').checked };
+    var opts = { docId: (docKey || 'doc'), styleTag: $('#ex-style').checked, script: $('#ex-script').checked,
+                 flush: mode === 'fragment' && $('#ex-flush').checked };
+    $('#ex-flush').disabled = mode !== 'fragment';
     return mode === 'page' ? NWR.exportPage(model, opts) : NWR.exportFragment(model, opts).html;
   }
   function updateExport() {
@@ -5057,6 +5062,7 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
     $$('input[name=exmode]').forEach(function (r) { r.addEventListener('change', updateExport); });
     $('#ex-style').addEventListener('change', updateExport);
     $('#ex-script').addEventListener('change', updateExport);
+    $('#ex-flush').addEventListener('change', updateExport);
     $('#ex-copy').addEventListener('click', function () {
       var txt = $('#outcode').value;
       function fallback() {

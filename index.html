@@ -620,6 +620,33 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
   *,*::before,*::after{scroll-behavior:auto!important;transition:none!important}
 }
 
+/* 블록 끌어 옮기기 */
+.blk-handle{position:fixed;z-index:30;width:20px;height:24px;display:none;align-items:center;justify-content:center;
+  border:1px solid transparent;border-radius:var(--r-sm);background:transparent;color:var(--sub-2);
+  font-size:13px;line-height:1;letter-spacing:-2px;cursor:grab;touch-action:none;user-select:none;padding:0}
+.blk-handle.on{display:flex}
+.blk-handle:hover{background:var(--surface);border-color:var(--line-2);color:var(--fg)}
+.blk-drop{position:fixed;z-index:31;height:3px;border-radius:2px;background:var(--accent);pointer-events:none;display:none}
+.blk-drop.on{display:block}
+.blk-dragging{opacity:.38}
+body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
+
+/* 색 팔레트 */
+.cpop{position:fixed;z-index:70;width:244px;max-width:calc(100vw - 16px);display:none;padding:12px;
+  background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r-md);box-shadow:0 10px 28px rgba(16,20,24,.16);font-size:12px}
+.cpop.on{display:block}
+.cpop h4{margin:0 0 6px;font-size:11.5px;font-weight:800;color:var(--sub);display:flex;align-items:center;gap:6px}
+.cpop h4 .sp{flex:1}
+.cpop .cp-row{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 11px}
+.cpop .cp-sw{width:22px;height:22px;border-radius:4px;border:1px solid rgba(0,0,0,.16);cursor:pointer;padding:0}
+.cpop .cp-sw:hover{transform:scale(1.1)}
+.cpop .cp-sw.cur{box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--accent)}
+.cpop .cp-empty{color:var(--sub-2);font-size:11.5px;margin:0 0 11px}
+.cpop .cp-foot{display:flex;gap:6px;border-top:1px solid var(--line);padding-top:10px}
+.cpop .cp-foot .btn{flex:1;height:28px;font-size:12px;padding:0 8px}
+.cpop .mini-link{border:0;background:none;color:var(--sub);font-size:11px;cursor:pointer;padding:0;text-decoration:underline}
+.cpop .mini-link:hover{color:var(--accent)}
+
 </style>
 </head>
 <body>
@@ -668,6 +695,7 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
     <button type="button" class="tb" data-fmt="left" title="왼쪽 정렬">⇤</button>
     <button type="button" class="tb" data-fmt="center" title="가운데 정렬">≡</button>
     <button type="button" class="tb" data-fmt="right" title="오른쪽 정렬">⇥</button>
+    <button type="button" class="tb" data-fmt="justify" title="양쪽 정렬 (줄 끝을 맞추고, 띄어쓰기가 벌어지지 않도록 단어 중간에서도 줄을 바꿉니다)">☰</button>
   </div>
   <div class="grp">
     <button type="button" class="tb" id="ins-link" title="링크 (어떤 주소든 가능)">링크</button>
@@ -819,6 +847,13 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
         <li>첫 번째 셀을 클릭하고 <b>Shift+클릭</b>으로 마지막 셀을 선택한 뒤 <b>셀 병합</b>을 누릅니다. 선택한 사각형 영역의 행이나 열을 합칠 수 있습니다.</li>
         <li>합친 셀을 클릭하고 <b>병합 해제</b>를 누르면 다시 나눌 수 있습니다.</li>
         <li><b>표 넓이 · 열 비율</b>에서 표 전체 넓이(%)와 위치, 열 비율(예: <code>1 : 2 : 1</code>)을 정할 수 있습니다. 본문에서 칸 사이 세로 경계를 마우스로 끌어도 열 넓이가 바뀝니다.</li>
+      </ul>
+      <h3>블록 옮기기 · 색 팔레트 · 양쪽 정렬</h3>
+      <ul>
+        <li>본문 문단·인용구·표 등에 마우스를 올리면(터치 화면은 누르면) 왼쪽에 <b>⋮⋮ 손잡이</b>가 나타납니다. 끌어서 원하는 위치에 놓으면 순서가 바뀝니다. 다른 챕터로도 옮길 수 있습니다.</li>
+        <li>커서가 있는 블록은 <code>Alt+Shift+↑ / ↓</code> 로 한 칸씩 옮길 수 있습니다.</li>
+        <li>색 칸을 누르면 <b>색 팔레트</b>가 열립니다. 이 문서에서 쓰는 색과 최근 쓴 색을 바로 고를 수 있고, <b>＋ 지금 색 저장</b>으로 자주 쓰는 색을 저장해 둘 수 있습니다(저장한 색은 우클릭하면 삭제). 원래 색 선택기는 <b>다른 색 고르기</b>로 엽니다.</li>
+        <li><b>☰ 양쪽 정렬</b>은 줄 끝을 맞추면서 단어 중간에서도 줄을 바꿔, 띄어쓰기 간격이 넓게 벌어지지 않게 합니다.</li>
       </ul>
       <h3>미리보기 창</h3>
       <ul>
@@ -1286,6 +1321,10 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
       el.setAttribute('style', Object.keys(rules).map(function (k) { return k + ':' + rules[k]; }).join(';') + ';');
     }
 
+    /* 양쪽 정렬 블록: 단어 중간 줄바꿈을 허용해 띄어쓰기가 벌어지지 않게 (내보내기에도 인라인으로 남는다) */
+    Array.prototype.slice.call(box.querySelectorAll('[style*="justify"]')).forEach(function (el) {
+      if (/text-align\s*:\s*justify/i.test(el.getAttribute('style') || '')) set(el, 'word-break:break-all;');
+    });
     Array.prototype.slice.call(box.querySelectorAll('*')).forEach(function (el) {
       var tag = el.tagName, kind = el.getAttribute('data-nw');
 
@@ -1418,7 +1457,11 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
       ';border-radius:5px;overflow:hidden;background:' + bg + ';color:' + fg + ';' + fit);
     var bar = el.querySelector('[data-nw=qbar]'), body = el.querySelector('[data-nw=qbody]');
     if (bar) bar.setAttribute('style', 'flex:0 0 6px;background:' + accent + ';');
-    if (body) body.setAttribute('style', 'flex:1 1 auto;min-width:0;padding:14px 18px;line-height:' + LH + ';');
+    if (body) {
+      var ta = body.style.textAlign, wb = body.style.wordBreak;
+      body.setAttribute('style', 'flex:1 1 auto;min-width:0;padding:14px 18px;line-height:' + LH + ';' +
+        (ta ? 'text-align:' + ta + ';' : '') + (ta === 'justify' ? 'word-break:break-all;' : wb ? 'word-break:' + wb + ';' : ''));
+    }
     var cite = el.querySelector('[data-nw=qcite]');
     if (cite) cite.setAttribute('style', 'display:block;margin-top:8px;text-align:right;font-size:.88em;color:' + BASE.sub + ';');
   }
@@ -2156,12 +2199,51 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
       case 'sub':       return run('subscript');
       case 'ul':        return run('insertUnorderedList');
       case 'ol':        return run('insertOrderedList');
-      case 'left':      return run('justifyLeft');
-      case 'center':    return run('justifyCenter');
-      case 'right':     return run('justifyRight');
+      case 'left':      return E.align('left', 'justifyLeft');
+      case 'center':    return E.align('center', 'justifyCenter');
+      case 'right':     return E.align('right', 'justifyRight');
+      case 'justify':   return E.align('justify', 'justifyFull');
       case 'clear':     return E.clearFormat();
     }
   };
+  /* 정렬: 선택이 걸친 문단(블록)에 text-align 을 직접 준다.
+     execCommand 는 각주처럼 편집할 수 없는 조각이 든 문단 안에 <div> 를 새로 끼워 넣기 때문. */
+  var ALIGN_BLOCK = 'p,li,h1,h2,h3,h4,h5,h6,td,th,blockquote,[data-nw=qbody],[data-nw=ntext],div:not([data-nw])';
+  E.align = function (value, cmd) {
+    if (!E.restoreSelection()) return false;
+    var host = active, sel = window.getSelection();
+    if (!host || !sel.rangeCount) return run(cmd) && fixJustify();
+    var r = sel.getRangeAt(0), blocks = [];
+    function add(n) {
+      if (n && n.nodeType === 3) n = n.parentNode;
+      var b = n && n.closest ? n.closest(ALIGN_BLOCK) : null;
+      if (b && b !== host && host.contains(b) && blocks.indexOf(b) < 0) blocks.push(b);
+    }
+    add(r.startContainer); add(r.endContainer);
+    Array.prototype.slice.call(host.querySelectorAll(ALIGN_BLOCK)).forEach(function (el) {
+      if (r.intersectsNode(el) && blocks.indexOf(el) < 0) blocks.push(el);
+    });
+    /* 다른 블록을 품은 바깥 블록은 빼고 가장 안쪽 블록에만 적용 */
+    blocks = blocks.filter(function (b) {
+      return !blocks.some(function (o) { return o !== b && b.contains(o); });
+    });
+    if (!blocks.length) return run(cmd) && fixJustify();
+    blocks.forEach(function (b) { b.style.textAlign = value; });
+    E.saveSelection();
+    return fixJustify();
+  };
+  /* 양쪽 정렬한 블록은 단어 중간에서도 줄을 바꿔(break-all) 띄어쓰기가 넓게 벌어지지 않게 한다.
+     다른 정렬로 바꾸면 그 설정도 걷어 낸다. */
+  function fixJustify() {
+    var host = active;
+    if (!host) return true;
+    Array.prototype.slice.call(host.querySelectorAll('[style]')).forEach(function (el) {
+      if (el.style.textAlign === 'justify') el.style.wordBreak = 'break-all';
+      else if (el.style.wordBreak === 'break-all') el.style.removeProperty('word-break');
+    });
+    onChange();
+    return true;
+  }
 
   E.clearFormat = function () {
     if (!E.restoreSelection()) return false;
@@ -4510,6 +4592,316 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
   }
 
   /* ==================================================================
+   * 블록 끌어 옮기기 (노션처럼 문단 · 인용구 · 표 등의 순서 바꾸기)
+   *  - 본문 블록 왼쪽의 ⋮⋮ 손잡이를 끌어 원하는 위치에 놓는다. 다른 챕터로도 옮길 수 있다.
+   *  - 키보드: Alt+Shift+↑ / ↓ 로 커서가 있는 블록을 한 칸씩 옮긴다.
+   * ================================================================ */
+  function blockHosts() { return $$('.nw-body[contenteditable=true]', elDoc); }
+  function topBlock(node, host) {
+    if (node && node.nodeType === 3) node = node.parentNode;
+    while (node && node.parentNode && node.parentNode !== host) node = node.parentNode;
+    return node && node.parentNode === host && node.nodeType === 1 ? node : null;
+  }
+  function isBlockElement(el) {
+    return !!(el && (el.getAttribute('data-nw') || el.tagName === 'TABLE' || el.tagName === 'HR'));
+  }
+  /* 옮긴 뒤 빈 본문 · 끝이 블록인 본문에 쓸 자리를 남긴다 */
+  function tidyHost(host) {
+    if (!host.firstElementChild && !host.textContent.trim()) host.innerHTML = '<p><br></p>';
+    var last = host.lastElementChild;
+    if (isBlockElement(last)) { var p = document.createElement('p'); p.innerHTML = '<br>'; host.appendChild(p); }
+  }
+  function moveBlock(block, host, before) {
+    var from = block.parentNode;
+    if (before === block) return false;
+    if (before ? before.previousElementSibling === block : (host === from && host.lastElementChild === block)) return false;
+    recordHistory();
+    host.insertBefore(block, before || null);
+    tidyHost(from); if (host !== from) tidyHost(host);
+    pull(from); if (host !== from) pull(host);
+    recordHistory();
+    return true;
+  }
+
+  function initBlockDrag() {
+    var handle = document.createElement('button');
+    handle.type = 'button';
+    handle.className = 'blk-handle';
+    handle.title = '끌어서 블록 옮기기 (Alt+Shift+↑/↓)';
+    handle.setAttribute('aria-label', '블록 옮기기');
+    handle.textContent = '⋮⋮';
+    var line = document.createElement('div');
+    line.className = 'blk-drop';
+    document.body.appendChild(handle); document.body.appendChild(line);
+    var hover = null, hideTimer = null, drag = null;
+
+    function place(block) {
+      var r = block.getBoundingClientRect();
+      var box = $('#doc-scroll').getBoundingClientRect();
+      if (r.bottom < box.top || r.top > box.bottom) { hide(); return; }
+      handle.style.left = Math.max(box.left + 2, r.left - 26) + 'px';
+      handle.style.top = Math.max(box.top, r.top + Math.min(4, Math.max(0, r.height / 2 - 12))) + 'px';
+      handle.classList.add('on');
+    }
+    function hide() { handle.classList.remove('on'); hover = null; }
+
+    function show(ev) {
+      if (drag) return;
+      var host = ev.target.closest && ev.target.closest('.nw-body[contenteditable=true]');
+      var block = host && topBlock(ev.target, host);
+      if (!block || (block.tagName === 'P' && !block.textContent.trim() && block === host.lastElementChild && host.children.length > 1)) return;
+      clearTimeout(hideTimer);
+      hover = { block: block, host: host };
+      place(block);
+    }
+    elDoc.addEventListener('mousemove', show);
+    elDoc.addEventListener('click', show);   /* 터치 화면: 블록을 누르면 손잡이가 뜬다 */
+    elDoc.addEventListener('mouseleave', function () {
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(function () { if (!drag && !handle.matches(':hover')) hide(); }, 400);
+    });
+    handle.addEventListener('mouseleave', function () {
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(function () { if (!drag) hide(); }, 600);
+    });
+    $('#doc-scroll').addEventListener('scroll', function () { if (!drag) hide(); });
+
+    function target(x, y) {
+      var el = document.elementFromPoint(x, y);
+      var host = el && el.closest && el.closest('.nw-body[contenteditable=true]');
+      if (!host) {
+        /* 손잡이를 본문 왼쪽 여백으로 끌어도 그 줄의 본문을 찾는다 */
+        host = blockHosts().filter(function (h) {
+          var r = h.getBoundingClientRect();
+          return y >= r.top - 8 && y <= r.bottom + 8 && h.offsetParent;
+        })[0];
+      }
+      if (!host || (drag && drag.block.contains(host))) return null;
+      var kids = Array.prototype.slice.call(host.children).filter(function (k) { return k !== drag.block; });
+      var before = null;
+      for (var i = 0; i < kids.length; i++) {
+        var r = kids[i].getBoundingClientRect();
+        if (y < r.top + r.height / 2) { before = kids[i]; break; }
+      }
+      var hr = host.getBoundingClientRect(), ly;
+      if (before) ly = before.getBoundingClientRect().top - 3;
+      else if (kids.length) ly = kids[kids.length - 1].getBoundingClientRect().bottom + 1;
+      else ly = hr.top;
+      return { host: host, before: before, y: ly, left: hr.left, width: hr.width };
+    }
+
+    handle.addEventListener('pointerdown', function (ev) {
+      if (!hover || ev.button > 0) return;
+      ev.preventDefault();
+      clearTimeout(hideTimer);
+      try { handle.setPointerCapture(ev.pointerId); } catch (e) {}
+      drag = { block: hover.block, host: hover.host, drop: null, scroll: null };
+      drag.block.classList.add('blk-dragging');
+      document.body.classList.add('blk-moving');
+    });
+    handle.addEventListener('pointermove', function (ev) {
+      if (!drag) return;
+      handle.style.top = (ev.clientY - 12) + 'px';
+      var t = target(ev.clientX, ev.clientY);
+      drag.drop = t;
+      if (t) {
+        line.style.left = t.left + 'px'; line.style.width = t.width + 'px'; line.style.top = t.y + 'px';
+        line.classList.add('on');
+      } else line.classList.remove('on');
+      /* 가장자리에 가까우면 문서를 스크롤한다 */
+      var sc = $('#doc-scroll'), box = sc.getBoundingClientRect();
+      clearInterval(drag.scroll);
+      var dir = ev.clientY < box.top + 40 ? -1 : ev.clientY > box.bottom - 40 ? 1 : 0;
+      if (dir) drag.scroll = setInterval(function () { sc.scrollTop += dir * 14; }, 16);
+    });
+    function finish(apply) {
+      if (!drag) return;
+      var d = drag;
+      drag = null;
+      clearInterval(d.scroll);
+      d.block.classList.remove('blk-dragging');
+      if (!d.block.className) d.block.removeAttribute('class');
+      document.body.classList.remove('blk-moving');
+      line.classList.remove('on');
+      hide();
+      if (apply && d.drop && moveBlock(d.block, d.drop.host, d.drop.before)) toast('블록을 옮겼습니다');
+    }
+    handle.addEventListener('pointerup', function () { finish(true); });
+    handle.addEventListener('pointercancel', function () { finish(false); });
+    document.addEventListener('keydown', function (ev) {
+      if (drag && ev.key === 'Escape') { finish(false); return; }
+      if (!ev.altKey || !ev.shiftKey || (ev.key !== 'ArrowUp' && ev.key !== 'ArrowDown')) return;
+      var sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return;
+      var n = sel.getRangeAt(0).startContainer;
+      var host = (n.nodeType === 3 ? n.parentNode : n).closest('.nw-body[contenteditable=true]');
+      var block = host && elDoc.contains(host) && topBlock(n, host);
+      if (!block) return;
+      ev.preventDefault();
+      var r = sel.getRangeAt(0).cloneRange();
+      if (ev.key === 'ArrowUp' ? block.previousElementSibling : block.nextElementSibling) {
+        moveBlock(block, host, ev.key === 'ArrowUp' ? block.previousElementSibling : block.nextElementSibling.nextElementSibling);
+        try { sel.removeAllRanges(); sel.addRange(r); NWE.saveSelection(); } catch (e) {}
+        block.scrollIntoView({ block: 'nearest' });
+      }
+    });
+  }
+
+  /* ==================================================================
+   * 색 팔레트 — 이 문서에서 쓰는 색 · 최근 쓴 색 · 저장한 색
+   *  색 입력 칸(input[type=color])을 누르면 기본 색 선택기 대신 팔레트가 먼저 뜬다.
+   *  '다른 색 고르기'로 원래 색 선택기를 열 수 있다. 저장한 색은 이 브라우저에 남는다.
+   * ================================================================ */
+  var LS_COLORS = 'nwdm.v2.colors';
+  function normHex(c) {
+    c = String(c || '').trim().toLowerCase();
+    var m = c.match(/^#([0-9a-f]{3})$/);
+    if (m) return '#' + m[1].split('').map(function (x) { return x + x; }).join('');
+    if (/^#[0-9a-f]{6}$/.test(c)) return c;
+    m = c.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)$/);
+    if (m && (m[4] === undefined || parseFloat(m[4]) >= 1)) {
+      return '#' + [m[1], m[2], m[3]].map(function (x) { return ('0' + Math.min(255, +x).toString(16)).slice(-2); }).join('');
+    }
+    return '';
+  }
+  function colorStore() {
+    var st = readJSON(LS_COLORS, {});
+    return { recent: Array.isArray(st.recent) ? st.recent : [], saved: Array.isArray(st.saved) ? st.saved : [] };
+  }
+  function rememberColor(c) {
+    c = normHex(c);
+    if (!c) return;
+    var st = colorStore();
+    st.recent = [c].concat(st.recent.filter(function (x) { return x !== c; })).slice(0, 14);
+    writeJSON(LS_COLORS, st);
+  }
+  /* 문서에 실제로 쓰인 색: 디자인 설정 · 경고문/인용구 색 · 글자 색 · 글자 배경 · 칸 배경 */
+  function documentColors() {
+    var count = {};
+    function add(c, w) { c = normHex(c); if (c) count[c] = (count[c] || 0) + (w || 1); }
+    var box = document.createElement('div');
+    (function walk(o, key) {
+      if (o == null) return;
+      if (typeof o === 'string') {
+        if (o.indexOf('<') >= 0) {
+          box.innerHTML = o;
+          $$('[data-accent],[data-bg],[data-fg],[data-border]', box).forEach(function (el) {
+            ['data-accent', 'data-bg', 'data-fg', 'data-border'].forEach(function (a) { add(el.getAttribute(a), 2); });
+          });
+          $$('span,font,b,strong,i,em,u,s,mark,sup,sub,a,td,th', box).forEach(function (el) {
+            if (el.getAttribute('data-nw')) return;
+            if (el.tagName === 'FONT') add(el.getAttribute('color'));
+            if (el.style.color && el.tagName !== 'TD' && el.tagName !== 'TH') add(el.style.color);
+            add(el.style.backgroundColor);
+          });
+        } else if (/^(#|rgb)/i.test(o) && key !== 'id') add(o, 2);
+        return;
+      }
+      if (typeof o === 'object') Object.keys(o).forEach(function (k) { walk(o[k], k); });
+    })(model, '');
+    return Object.keys(count).sort(function (a, b) { return count[b] - count[a]; }).slice(0, 21);
+  }
+
+  function initColorPalette() {
+    var pop = document.createElement('div');
+    pop.className = 'cpop';
+    pop.setAttribute('role', 'dialog');
+    pop.setAttribute('aria-label', '색 팔레트');
+    document.body.appendChild(pop);
+    var input = null, bypass = null;
+
+    function sw(c, cur, removable) {
+      return '<button type="button" class="cp-sw' + (c === cur ? ' cur' : '') + '" data-c="' + c + '"' +
+        (removable ? ' data-saved="1"' : '') + ' style="background:' + c + '" title="' + c + (removable ? ' (우클릭하면 삭제)' : '') + '"></button>';
+    }
+    function row(list, cur, removable, empty) {
+      return list.length ? '<div class="cp-row">' + list.map(function (c) { return sw(c, cur, removable); }).join('') + '</div>'
+                         : '<p class="cp-empty">' + empty + '</p>';
+    }
+    function draw() {
+      var cur = normHex(input && input.value), st = colorStore();
+      pop.innerHTML =
+        '<h4>저장한 색<span class="sp"></span><button type="button" class="mini-link" data-act="save">＋ 지금 색 저장</button></h4>' +
+        row(st.saved, cur, true, '자주 쓰는 색을 저장해 두세요.') +
+        '<h4>이 문서에서 쓰는 색</h4>' + row(documentColors(), cur, false, '아직 쓴 색이 없습니다.') +
+        '<h4>최근 쓴 색</h4>' + row(st.recent, cur, false, '최근에 쓴 색이 없습니다.') +
+        '<div class="cp-foot"><button type="button" class="btn" data-act="pick">다른 색 고르기…</button></div>';
+    }
+    function open(el) {
+      input = el;
+      draw();
+      pop.classList.add('on');
+      var r = el.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+      var left = Math.min(Math.max(8, r.left), window.innerWidth - w - 8);
+      var top = r.bottom + 6;
+      if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 6);
+      pop.style.left = left + 'px'; pop.style.top = top + 'px';
+    }
+    function close() { pop.classList.remove('on'); input = null; }
+    function apply(c) {
+      var el = input;
+      if (!el) return;
+      el.value = c;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      close();
+    }
+
+    /* 색 칸을 누르면 팔레트를 먼저 연다 (라벨을 눌러도 같은 클릭이 input 으로 온다) */
+    document.addEventListener('click', function (ev) {
+      var el = ev.target;
+      if (!el || el.tagName !== 'INPUT' || el.type !== 'color') return;
+      if (bypass === el) { bypass = null; return; }
+      ev.preventDefault();
+      if (input === el && pop.classList.contains('on')) { close(); return; }
+      open(el);
+    }, true);
+    pop.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+    pop.addEventListener('click', function (ev) {
+      var b = ev.target.closest('button');
+      if (!b) return;
+      var c = b.getAttribute('data-c');
+      if (c) { apply(c); return; }
+      var act = b.getAttribute('data-act');
+      if (act === 'save') {
+        var cur = normHex(input && input.value);
+        if (!cur) return;
+        var st = colorStore();
+        st.saved = st.saved.filter(function (x) { return x !== cur; }).concat([cur]).slice(-24);
+        writeJSON(LS_COLORS, st); draw(); toast(cur + ' 색을 저장했습니다');
+      } else if (act === 'pick') {
+        var el = input;
+        close();
+        bypass = el;
+        try { if (el.showPicker) { el.showPicker(); bypass = null; } else el.click(); }
+        catch (e) { el.click(); }
+      }
+    });
+    pop.addEventListener('contextmenu', function (ev) {
+      var b = ev.target.closest('[data-saved]');
+      if (!b) return;
+      ev.preventDefault();
+      var c = b.getAttribute('data-c'), st = colorStore();
+      st.saved = st.saved.filter(function (x) { return x !== c; });
+      writeJSON(LS_COLORS, st); draw(); toast(c + ' 색을 저장 목록에서 뺐습니다');
+    });
+    document.addEventListener('mousedown', function (ev) {
+      if (pop.classList.contains('on') && !pop.contains(ev.target) && ev.target !== input) close();
+    }, true);
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && pop.classList.contains('on')) { ev.stopPropagation(); close(); } }, true);
+    window.addEventListener('resize', close);
+    $('#doc-scroll').addEventListener('scroll', close);
+
+    /* 실제로 고른 색은 '최근 쓴 색'에 남긴다 (색 칸 · 16진수 입력 칸 모두) */
+    document.addEventListener('change', function (ev) {
+      var el = ev.target;
+      if (!el || el.tagName !== 'INPUT') return;
+      if (el.type === 'color') rememberColor(el.value);
+      else if (el.type === 'text' && el.closest('.colorfield')) rememberColor(el.value);
+    }, true);
+  }
+
+  /* ==================================================================
    * 시작
    * ================================================================ */
   function initShell() {
@@ -4524,6 +4916,8 @@ main{grid-template-columns:300px minmax(0,1fr);padding:18px 22px 22px;gap:18px}
     initToolbar();
     initSide();
     initColumnResize();
+    initBlockDrag();
+    initColorPalette();
     $('#btn-undo').addEventListener('click', function () { restoreHistory(-1); });
     $('#btn-redo').addEventListener('click', function () { restoreHistory(1); });
     /* End a typing group before a separate toolbar or structural operation. */

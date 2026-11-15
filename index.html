@@ -883,6 +883,7 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
       <ul>
         <li>본문 문단·인용구·표 등에 마우스를 올리면(터치 화면은 누르면) 왼쪽에 <b>⋮⋮ 손잡이</b>가 나타납니다. 끌어서 원하는 위치에 놓으면 순서가 바뀝니다. 다른 챕터로도 옮길 수 있습니다.</li>
         <li>커서가 있는 블록은 <code>Alt+Shift+↑ / ↓</code> 로 한 칸씩 옮길 수 있습니다.</li>
+        <li>손잡이를 끌지 않고 <b>누르면</b> 그 블록(인용구·표·문단 등)을 삭제할 수 있습니다. 인용구·경고문·사진·영상은 편집 창의 <b>삭제</b> 체크로도 지울 수 있습니다.</li>
         <li>색 칸을 누르면 <b>색 팔레트</b>가 열립니다. 이 문서에서 쓰는 색과 최근 쓴 색을 바로 고를 수 있고, <b>＋ 지금 색 저장</b>으로 자주 쓰는 색을 저장해 둘 수 있습니다(저장한 색은 우클릭하면 삭제). 원래 색 선택기는 <b>다른 색 고르기</b>로 엽니다.</li>
         <li>문서 전체 정렬은 왼쪽 <b>문서</b> 탭의 <b>본문 정렬</b>에서 한 번에 바꿉니다. 따로 정렬한 문단까지 맞추려면 그 아래 버튼을 누르세요.</li>
         <li><b>☰ 양쪽 정렬</b>은 줄 끝을 맞추면서 단어 중간에서도 줄을 바꿔, 띄어쓰기 간격이 넓게 벌어지지 않게 합니다.</li>
@@ -3819,8 +3820,9 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
         { key: 'url', label: '유튜브 주소 또는 영상 ID', value: f ? (f.getAttribute('src') || '') : '', placeholder: 'https://youtu.be/...' },
         { key: 'w', label: '가로 폭(px)', type: 'number', value: cur ? (cur.getAttribute('data-w') || 640) : 640 },
         { key: 'cap', label: '영상 설명', value: cap ? cap.textContent : '', placeholder: '비워도 됩니다' }
-      ],
+      ].concat(cur ? [{ key: 'del', label: '이 영상 삭제', type: 'checkbox', value: false, hint: '체크하고 확인을 누르면 삭제됩니다' }] : []),
       onOk: function (v) {
+        if (cur && v.del) { removeBlock(cur); return; }
         var id = ytId(v.url);
         if (!id) { toast('유튜브 주소나 영상 ID를 확인해 주세요'); return; }
         var html = '<div data-nw="embed" data-w="' + esc(v.w || 640) + '">' +
@@ -3854,8 +3856,9 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
         { key: 'bg', label: '배경색', type: 'color', value: (cur && cur.getAttribute('data-bg')) || T.quote.bg },
         { key: 'fg', label: '글자색', type: 'color', value: (cur && cur.getAttribute('data-fg')) || T.quote.fg },
         { key: 'border', label: '테두리 색', type: 'color', value: (cur && cur.getAttribute('data-border')) || T.quote.border }
-      ],
+      ].concat(cur ? [{ key: 'del', label: '이 인용구 삭제', type: 'checkbox', value: false, hint: '체크하고 확인을 누르면 삭제됩니다' }] : []),
       onOk: function (v) {
+        if (cur && v.del) { removeBlock(cur); return; }
         var inner = quoteLines(v.text) || '인용할 내용';
         var html = '<div data-nw="quote" data-fit="' + esc(v.fit || 'full') + '" data-accent="' + esc(v.accent) + '" data-bg="' + esc(v.bg) + '" data-fg="' + esc(v.fg) + '" data-border="' + esc(v.border) + '">' +
                      '<span data-nw="qbar"></span>' +
@@ -3913,8 +3916,9 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
         { key: 'bg', label: '배경색', type: 'color', value: (cur && cur.getAttribute('data-bg')) || '' },
         { key: 'fg', label: '글자색', type: 'color', value: (cur && cur.getAttribute('data-fg')) || '' },
         { key: 'border', label: '테두리 색', type: 'color', value: (cur && cur.getAttribute('data-border')) || '' }
-      ],
+      ].concat(cur ? [{ key: 'del', label: '이 경고문 삭제', type: 'checkbox', value: false, hint: '체크하고 확인을 누르면 삭제됩니다' }] : []),
       onOk: function (v) {
+        if (cur && v.del) { removeBlock(cur); return; }
         var icon = resolveIcon(v.iconsel, v.icontext);
         if (v.preset && P[v.preset]) {
           var pr = P[v.preset];
@@ -4711,6 +4715,20 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
     var last = host.lastElementChild;
     if (isBlockElement(last)) { var p = document.createElement('p'); p.innerHTML = '<br>'; host.appendChild(p); }
   }
+  function removeBlock(block) {
+    var host = block && block.parentNode;
+    if (!host) return false;
+    recordHistory();
+    block.remove();
+    if (host.matches && host.matches('.nw-body[contenteditable=true]')) tidyHost(host);
+    var editable = host.closest ? host.closest('[contenteditable=true]') : null;
+    if (editable) pull(editable);
+    NWE.clearSelection();
+    recordHistory();
+    toast('삭제했습니다 — 실행 취소로 되돌릴 수 있습니다');
+    return true;
+  }
+
   function moveBlock(block, host, before) {
     var from = block.parentNode;
     if (before === block) return false;
@@ -4727,7 +4745,7 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
     var handle = document.createElement('button');
     handle.type = 'button';
     handle.className = 'blk-handle';
-    handle.title = '끌어서 블록 옮기기 (Alt+Shift+↑/↓)';
+    handle.title = '끌어서 블록 옮기기 (Alt+Shift+↑/↓) · 누르면 삭제';
     handle.setAttribute('aria-label', '블록 옮기기');
     handle.textContent = '⋮⋮';
     var line = document.createElement('div');
@@ -4795,12 +4813,14 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
       ev.preventDefault();
       clearTimeout(hideTimer);
       try { handle.setPointerCapture(ev.pointerId); } catch (e) {}
-      drag = { block: hover.block, host: hover.host, drop: null, scroll: null };
+      drag = { block: hover.block, host: hover.host, drop: null, scroll: null, x: ev.clientX, y: ev.clientY, moved: false };
       drag.block.classList.add('blk-dragging');
       document.body.classList.add('blk-moving');
     });
     handle.addEventListener('pointermove', function (ev) {
       if (!drag) return;
+      if (!drag.moved && Math.abs(ev.clientX - drag.x) + Math.abs(ev.clientY - drag.y) < 6) return;
+      drag.moved = true;
       handle.style.top = (ev.clientY - 12) + 'px';
       var t = target(ev.clientX, ev.clientY);
       drag.drop = t;
@@ -4824,6 +4844,16 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
       document.body.classList.remove('blk-moving');
       line.classList.remove('on');
       hide();
+      if (apply && !d.moved) {
+        /* 끌지 않고 눌렀다 떼면 삭제 여부를 묻는다 */
+        var name = d.block.getAttribute('data-nw') === 'quote' ? '인용구' : d.block.getAttribute('data-nw') === 'notice' ? '경고문'
+          : d.block.getAttribute('data-nw') === 'tablewrap' || d.block.tagName === 'TABLE' ? '표'
+          : d.block.getAttribute('data-nw') === 'figure' ? '사진' : d.block.getAttribute('data-nw') === 'embed' ? '영상' : '블록';
+        var c = name.charCodeAt(name.length - 1) - 0xAC00;
+        var obj = name + (c >= 0 && c < 11172 && c % 28 ? '을' : '를');   /* 받침이 있으면 '을' */
+        if (confirm('이 ' + obj + ' 삭제할까요?\n실행 취소로 되돌릴 수 있습니다.')) removeBlock(d.block);
+        return;
+      }
       if (apply && d.drop && moveBlock(d.block, d.drop.host, d.drop.before)) toast('블록을 옮겼습니다');
     }
     handle.addEventListener('pointerup', function () { finish(true); });

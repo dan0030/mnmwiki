@@ -3,6 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<script>
+/* iOS Safari 는 글자가 16px 보다 작은 입력칸을 누르면 화면을 자동 확대하고 그대로 둔다.
+   iOS 에서만 자동 확대를 끈다(iOS 는 이 설정에서도 두 손가락 확대는 허용한다). */
+(function () {
+  var ios = /iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var m = ios && document.querySelector('meta[name=viewport]');
+  if (m) m.setAttribute('content', 'width=device-width,initial-scale=1,maximum-scale=1');
+})();
+</script>
 <title>문서 공방 · Wiki Document Studio</title>
 <meta name="description" content="캐릭터 프로필과 일반 문서를 나무위키 형식으로 작성하고, 티스토리 등 HTML 블록에 그대로 붙여넣을 수 있는 HTML로 내보냅니다.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23213f36'/%3E%3Cpath d='M8 10h16M8 16h16M8 22h10' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
@@ -3193,7 +3202,7 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
   /* 다시 그리는 동안 사라지는 편집 칸의 blur 가 옛 내용을 모델에 되돌려 쓰지 않도록 막는다
      (실행 취소 직후 내보내기에 취소 전 내용이 남던 문제) */
   var rendering = false;
-  function rerender() {
+  function rerender(opts) {
     var scroll = $('#doc-scroll').scrollTop;
     var r = NWR.render(model, { editable: true, docId: docId });
     elDoc.setAttribute('style', NWR.docStyle(model));
@@ -3203,7 +3212,7 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
     bindDoc();
     renumberFootnotes();
     $('#doc-scroll').scrollTop = scroll;
-    renderSide();
+    if (!(opts && opts.keepSide)) renderSide();
     scheduleSave(true);
   }
 
@@ -3293,12 +3302,18 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
         label = String(++n);
       }
       var note = el.getAttribute('data-note') || '';
-      el.className = 'nw-fnwrap';
-      el.setAttribute('contenteditable', 'false');
-      el.removeAttribute('title');   /* 기본 툴팁과 팝업이 겹쳐 두 개로 보이는 것을 막는다 */
+      /* 입력할 때마다 불리므로 값이 같으면 DOM 을 건드리지 않는다.
+         편집 중인 문단 안의 노드를 다시 쓰면 모바일 키보드의 한글 조합이 끊기거나 키보드가 닫힌다. */
+      if (el.className !== 'nw-fnwrap') el.className = 'nw-fnwrap';
+      if (el.getAttribute('contenteditable') !== 'false') el.setAttribute('contenteditable', 'false');
+      if (el.hasAttribute('title')) el.removeAttribute('title');   /* 기본 툴팁과 팝업이 겹쳐 두 개로 보이는 것을 막는다 */
       /* position 은 <style> 에서 문단 기준으로 잡으므로 여기서는 지정하지 않는다 */
-      el.setAttribute('style', 'display:inline-block;font-size:.78em;line-height:1;vertical-align:super;' +
-        'font-weight:600;color:' + (el.closest('.nw-profile') ? 'inherit' : NWR.resolveTheme(model).accent) + ';cursor:pointer;');
+      var css = 'display:inline-block;font-size:.78em;line-height:1;vertical-align:super;' +
+        'font-weight:600;color:' + (el.closest('.nw-profile') ? 'inherit' : NWR.resolveTheme(model).accent) + ';cursor:pointer;';
+      if (el.getAttribute('style') !== css) el.setAttribute('style', css);
+      var sig = label + '\u0000' + note + '\u0000' + css;
+      if (el.__nwsig === sig && el.querySelector('.nw-fnlabel')) return;
+      el.__nwsig = sig;
       el.innerHTML = '<span class="nw-fnlabel" style="line-height:1;">[' + NWR.esc(label) + ']</span>' +
                      NWR.footnotePopup(NWR.styleNote(note, model));
     });
@@ -4532,7 +4547,9 @@ body.blk-moving,body.blk-moving *{cursor:grabbing!important;user-select:none}
   }
 
   var rrTimer = null;
-  function debouncedRerender() { clearTimeout(rrTimer); rrTimer = setTimeout(rerender, 220); }
+  /* 사이드 패널에서 글자를 치는 동안 쓰는 지연 갱신. 문서만 다시 그리고 패널은 그대로 둔다.
+     패널까지 다시 그리면 입력 중인 칸이 새로 만들어져 포커스가 풀린다(모바일에서는 키보드가 닫힘). */
+  function debouncedRerender() { clearTimeout(rrTimer); rrTimer = setTimeout(function () { rerender({ keepSide: true }); }, 220); }
 
   function moveIn(arr, id, dir) {
     var i = arr.findIndex(function (x) { return x.id === id; });
